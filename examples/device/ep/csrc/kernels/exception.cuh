@@ -63,10 +63,10 @@ do { \
 #endif
 
 #ifndef EP_DEVICE_ASSERT
-#define EP_DEVICE_ASSERT(cond) \
+#define EP_DEVICE_ASSERT(...) \
 do { \
-    if (not (cond)) { \
-        printf("Assertion failed: %s:%d, condition: %s\n", __FILE__, __LINE__, #cond); \
+    if (not (__VA_ARGS__)) { \
+        printf("Assertion failed: %s:%d, condition: %s\n", __FILE__, __LINE__, #__VA_ARGS__); \
         asm("trap;"); \
     } \
 } while (0)

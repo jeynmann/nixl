@@ -188,7 +188,7 @@ dispatch(void* packed_recv_x, void* packed_recv_x_scales,
                     if (dst_p2p_ptr == 0) {
                         nixlMemViewElem src_mdesc{nixl_ctx.local_mvh, 0, nixl_ctx.offset_get(src_ptr)};
                         nixlMemViewElem dst_mdesc{nixl_ctx.remote_mvh, (size_t) dst_rank, nixl_ctx.offset_get(dst_ptr)};
-                        EP_DEVICE_ASSERT(nixlPut<nixl_gpu_level_t::WARP>(src_mdesc, dst_mdesc, num_bytes_per_msg,
+                        EP_DEVICE_ASSERT(nixlPut<nixl_gpu_level_t::WARP, nixl_gpu_locality_t::INTER>(src_mdesc, dst_mdesc, num_bytes_per_msg,
                                 dst_expert_local_idx, doorbell_flag(slot_idx)) == NIXL_IN_PROG);
                     } else {
                         // NOTES: only 2 load iterations for 7K hidden with 8 unrolls
@@ -256,7 +256,7 @@ dispatch(void* packed_recv_x, void* packed_recv_x_scales,
         if (not is_rank_masked(mask_buffer_ptr, dst_rank)) {
             if (dst_p2p_ptr == 0) {
                 nixlMemViewElem dst_mdesc{nixl_ctx.remote_mvh, static_cast<size_t>(dst_rank), nixl_ctx.offset_get(dst_ptr)};
-                EP_DEVICE_ASSERT(nixlAtomicAdd(num_tokens_sent + 1, dst_mdesc, dst_expert_local_idx) == NIXL_IN_PROG);
+                EP_DEVICE_ASSERT(nixlAtomicAdd<nixl_gpu_level_t::THREAD, nixl_gpu_locality_t::INTER>(num_tokens_sent + 1, dst_mdesc, dst_expert_local_idx) == NIXL_IN_PROG);
             } else {
                 st_release_sys_global(static_cast<uint64_t*>(dst_p2p_ptr), static_cast<uint64_t>(num_tokens_sent + 1));
             }
@@ -789,7 +789,7 @@ combine(void* combined_x,
                 if (dst_p2p_ptr == 0) {
                     nixlMemViewElem src_mdesc{nixl_ctx.local_mvh, 0, nixl_ctx.offset_get(buf_ptr)};
                     nixlMemViewElem dst_mdesc{nixl_ctx.remote_mvh, (size_t) dst_rank, nixl_ctx.offset_get(dst_ptr)};
-                    EP_DEVICE_ASSERT(nixlPut<nixl_gpu_level_t::WARP>(src_mdesc, dst_mdesc, num_send_bytes,
+                    EP_DEVICE_ASSERT(nixlPut<nixl_gpu_level_t::WARP, nixl_gpu_locality_t::INTER>(src_mdesc, dst_mdesc, num_send_bytes,
                             local_expert_idx, doorbell_flag(token_idx - offset)) == NIXL_IN_PROG);
                 }
             }
@@ -805,7 +805,7 @@ combine(void* combined_x,
             if (not is_rank_masked(mask_buffer_ptr, dst_rank)) {
                 if (dst_p2p_ptr == 0) {
                     nixlMemViewElem dst_mdesc{nixl_ctx.remote_mvh, (size_t) dst_rank, nixl_ctx.offset_get(dst_ptr)};
-                    EP_DEVICE_ASSERT(nixlAtomicAdd(1, dst_mdesc, local_expert_idx) == NIXL_IN_PROG);
+                    EP_DEVICE_ASSERT(nixlAtomicAdd<nixl_gpu_level_t::THREAD, nixl_gpu_locality_t::INTER>(1, dst_mdesc, local_expert_idx) == NIXL_IN_PROG);
                 } else {
                     st_release_sys_global(static_cast<uint64_t*>(dst_p2p_ptr), 1);
                 }
@@ -1130,7 +1130,7 @@ __forceinline__ __device__ void barrier(nixl_ep::gpu_nixl_ctx nixl_ctx, int* mas
 
             nixlMemViewElem src_mdesc{nixl_ctx.local_mvh, 1, dst_rank * sizeof(int)};
             nixlMemViewElem dst_mdesc{nixl_ctx.barrier_mvh, (size_t) dst_rank, nixl_ctx.rank * sizeof(int)};
-            EP_DEVICE_ASSERT(nixlPut<nixl_gpu_level_t::THREAD>(src_mdesc, dst_mdesc, sizeof(int), 0) == NIXL_IN_PROG);
+            EP_DEVICE_ASSERT(nixlPut<nixl_gpu_level_t::THREAD, nixl_gpu_locality_t::INTER>(src_mdesc, dst_mdesc, sizeof(int), 0) == NIXL_IN_PROG);
 
             auto start_time = clock64();
             uint64_t wait_recv_cost = 0;

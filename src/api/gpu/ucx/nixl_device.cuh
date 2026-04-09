@@ -37,6 +37,12 @@ enum class nixl_gpu_level_t : uint64_t {
     GRID = UCS_DEVICE_LEVEL_GRID
 };
 
+enum class nixl_gpu_locality_t : uint64_t {
+    AUTO = UCP_DEVICE_LOCALITY_AUTO,
+    INTER = UCP_DEVICE_LOCALITY_INTER,
+    INTRA = UCP_DEVICE_LOCALITY_INTRA
+};
+
 namespace nixl_gpu_flags {
 constexpr uint64_t defer = 1;
 
@@ -85,10 +91,13 @@ nixlGpuConvertUcsStatus(ucs_status_t status) {
  * @return NIXL_IN_PROG     One or more operations in the request have not completed.
  * @return NIXL_ERR_BACKEND An error occurred in UCX backend.
  */
-template<nixl_gpu_level_t level = nixl_gpu_level_t::THREAD>
+template<nixl_gpu_level_t level = nixl_gpu_level_t::THREAD,
+         nixl_gpu_locality_t locality = nixl_gpu_locality_t::AUTO>
 __device__ nixl_status_t
 nixlGpuGetXferStatus(nixlGpuXferStatusH &xfer_status) {
-    const auto status = ucp_device_progress_req<static_cast<ucs_device_level_t>(level)>(
+    const auto status = ucp_device_progress_req<
+            static_cast<ucs_device_level_t>(level),
+            static_cast<ucp_device_locality_t>(locality)>(
         &xfer_status.device_request);
 
     switch (status) {
@@ -116,7 +125,8 @@ nixlGpuGetXferStatus(nixlGpuXferStatusH &xfer_status) {
  * @return NIXL_IN_PROG     Transfer posted successfully.
  * @return NIXL_ERR_BACKEND An error occurred in UCX backend.
  */
-template<nixl_gpu_level_t level = nixl_gpu_level_t::THREAD>
+template<nixl_gpu_level_t level = nixl_gpu_level_t::THREAD,
+         nixl_gpu_locality_t locality = nixl_gpu_locality_t::AUTO>
 __device__ nixl_status_t
 nixlPut(const nixlMemViewElem &src,
         const nixlMemViewElem &dst,
@@ -128,16 +138,12 @@ nixlPut(const nixlMemViewElem &src,
     auto dst_mem_list = static_cast<ucp_device_remote_mem_list_h>(dst.mvh);
     ucp_device_request_t *ucp_request{xfer_status ? &xfer_status->device_request : nullptr};
     const auto status =
-        ucp_device_put<static_cast<ucs_device_level_t>(level)>(src_mem_list,
-                                                               src.index,
-                                                               src.offset,
-                                                               dst_mem_list,
-                                                               dst.index,
-                                                               dst.offset,
-                                                               size,
-                                                               channel_id,
-                                                               nixl_gpu_flags::to_ucp_flags(flags),
-                                                               ucp_request);
+        ucp_device_put<static_cast<ucs_device_level_t>(level),
+                       static_cast<ucp_device_locality_t>(locality)>(
+                src_mem_list, src.index, src.offset,
+                dst_mem_list, dst.index, dst.offset,
+                size, channel_id, nixl_gpu_flags::to_ucp_flags(flags),
+                ucp_request);
     return nixlGpuConvertUcsStatus(status);
 }
 
@@ -156,7 +162,8 @@ nixlPut(const nixlMemViewElem &src,
  * @return NIXL_IN_PROG     Atomic add posted successfully.
  * @return NIXL_ERR_BACKEND An error occurred in UCX backend.
  */
-template<nixl_gpu_level_t level = nixl_gpu_level_t::THREAD>
+template<nixl_gpu_level_t level = nixl_gpu_level_t::THREAD,
+         nixl_gpu_locality_t locality = nixl_gpu_locality_t::AUTO>
 __device__ nixl_status_t
 nixlAtomicAdd(uint64_t value,
               const nixlMemViewElem &counter,
@@ -165,14 +172,11 @@ nixlAtomicAdd(uint64_t value,
               nixlGpuXferStatusH *xfer_status = nullptr) {
     auto mem_list = static_cast<ucp_device_remote_mem_list_h>(counter.mvh);
     ucp_device_request_t *ucp_request{xfer_status ? &xfer_status->device_request : nullptr};
-    const auto status = ucp_device_counter_inc<static_cast<ucs_device_level_t>(level)>(
-        value,
-        mem_list,
-        counter.index,
-        counter.offset,
-        channel_id,
-        nixl_gpu_flags::to_ucp_flags(flags),
-        ucp_request);
+    const auto status =
+        ucp_device_counter_inc<static_cast<ucs_device_level_t>(level),
+                       static_cast<ucp_device_locality_t>(locality)>(
+                value, mem_list, counter.index, counter.offset, channel_id,
+                nixl_gpu_flags::to_ucp_flags(flags), ucp_request);
     return nixlGpuConvertUcsStatus(status);
 }
 
