@@ -187,6 +187,8 @@ protected:
             FAIL() << "Failed to set CUDA device 0";
         }
 
+        setupUcxGdaEnv();
+
         lig_ = std::make_unique<LogIgnoreGuard>(
             "IB device\\(s\\) were detected, but accelerated IB support was not found");
 

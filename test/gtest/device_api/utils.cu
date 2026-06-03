@@ -65,7 +65,14 @@ nixl_b_params_t DeviceApiTestBase::getBackendParams() {
     return params;
 }
 
+void DeviceApiTestBase::setupUcxGdaEnv()
+{
+    m_ucx_env.addVar("UCX_IB_GDA_RETAIN_INACTIVE_CTX", "yes");
+}
+
 void DeviceApiTestBase::SetUp() {
+    setupUcxGdaEnv();
+
     if (cudaSetDevice(0) != cudaSuccess) {
         FAIL() << "Failed to set CUDA device 0";
     }

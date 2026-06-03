@@ -132,6 +132,7 @@ class DeviceApiTestBase : public testing::TestWithParam<nixl_gpu_level_t> {
 protected:
     static nixlAgentConfig getConfig();
     nixl_b_params_t getBackendParams();
+    void setupUcxGdaEnv();
     void SetUp() override;
     void TearDown() override;
 
@@ -159,6 +160,7 @@ protected:
 private:
     static constexpr uint64_t DEV_ID = 0;
 
+    gtest::ScopedEnv m_ucx_env;
     std::vector<std::unique_ptr<nixlAgent>> agents;
     std::vector<nixlBackendH *> backend_handles;
 };
